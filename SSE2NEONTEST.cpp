@@ -32,12 +32,15 @@ static void platformAlignedFree(void* ptr)
 }
 
 #else
-
+// #include <malloc.h>
 #include "SSE2NEON.h"
 
 static void* platformAlignedAlloc(size_t size)
 {
-	return ::memalign(16, size);
+	void *mem;
+	::posix_memalign(&mem, 16, size);
+	return mem;
+	//return ::memalign(16, size);
 }
 
 static void platformAlignedFree(void* ptr)
@@ -82,9 +85,11 @@ void validateInt16(__m128i a,int16_t d0,int16_t d1,int16_t d2,int16_t d3,int16_t
 }
 
 
-void validateFloat(__m128 a,float x,float y,float z,float w)
+void validateFloat(int id,__m128 a,float x,float y,float z,float w)
 {
 	const float *t = (const float *)&a;
+	printf ("(line %-+9.2d) t[0]=%-+9.2f, t[1]=%-+9.2f, t[2]=%-+9.2f, t[3]=%-+9.2f, x=%-+9.2f, y=%-+9.2f, z=%-+9.2f, w=%-+9.2f\n", id, t[0],t[1],t[2],t[3], x, y, z, w);
+
 	assert( t[3] == x );
 	assert( t[2] == y );
 	assert( t[1] == z );
@@ -115,21 +120,21 @@ __m128i test_mm_setzero_si128(void)
 __m128 test_mm_setzero_ps(void)
 {
 	__m128 a = _mm_setzero_ps();
-	validateFloat(a,0,0,0,0);
+	validateFloat(__LINE__, a,0,0,0,0);
 	return a;
 }
 
 __m128 test_mm_set1_ps(float w)
 {
 	__m128 a = _mm_set1_ps(w);
-	validateFloat(a,w,w,w,w);
+	validateFloat(__LINE__,a,w,w,w,w);
 	return a;
 }
 
 __m128 test_mm_set_ps(float x,float y,float z,float w)
 {
 	__m128 a = _mm_set_ps(x,y,z,w);
-	validateFloat(a,x,y,z,w);
+	validateFloat(__LINE__,a,x,y,z,w);
 	return a;
 }
 
@@ -170,14 +175,14 @@ void test_mm_store_ps(int32_t *p,int32_t x,int32_t y,int32_t z,int32_t w)
 __m128 test_mm_load1_ps(const float *p)
 {
 	__m128 a = _mm_load1_ps(p);
-	validateFloat(a,p[0],p[0],p[0],p[0]);
+	validateFloat(__LINE__,a,p[0],p[0],p[0],p[0]);
 	return a;
 }
 
 __m128 test_mm_load_ps(const float *p)
 {
 	__m128 a = _mm_load_ps(p);
-	validateFloat(a,p[3],p[2],p[1],p[0]);
+	validateFloat(__LINE__,a,p[3],p[2],p[1],p[0]);
 	return a;
 }
 
@@ -333,23 +338,39 @@ int test_mm_movemask_ps(const float *p)
 	return ret;
 }
 
+void dumpM128_and_float(__m128 a, const float *_a) {
+	printf ("float = %-+9.2f  __m128 = %-+9.2f %-+9.2f %-+9.2f %-+9.2f\n", *_a, a[0], a[1], a[2], a[3]);
+}
+
 __m128 test_mm_shuffle_ps(const float *_a,const float *_b)
 {
 	__m128 a = test_mm_load_ps(_a);
 	__m128 b = test_mm_load_ps(_b);
+	const float zero = 0;
 
-	__m128 ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(0,1,2,3));
-	validateFloat(ret,_b[0],_b[1],_a[2],_a[3]);
+	dumpM128_and_float(a, _a);
+	dumpM128_and_float(b, _b);
 
-	ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(3,2,1,0));
-	validateFloat(ret,_b[3],_b[2],_a[1],_a[0]);
 
-	ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(0,0,1,1));
-	validateFloat(ret,_b[0],_b[0],_a[1],_a[1]);
+	if( 0 ) {
+	__m128 ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(3,2,1,0));
+	validateFloat(__LINE__,ret,_b[3],_b[2],_a[1],_a[0]); // E4 (228)
 
-	ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(3,1,0,2));
-	validateFloat(ret,_b[3],_b[1],_a[0],_a[2]);
+	ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(0,0,1,1)); // 0x5
+	validateFloat(__LINE__,ret,_b[0],_b[0],_a[1],_a[1]);
+	}
 
+
+	// failed tests
+	__m128 ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(0,1,2,3)); // 0x1B (27)
+	dumpM128_and_float(ret, &zero);
+
+	validateFloat(__LINE__,ret,_b[0],_b[1],_a[2],_a[3]);
+
+	ret = _mm_shuffle_ps(a,b,_MM_SHUFFLE(3,1,0,2)); // 0xD2 (210)
+	dumpM128_and_float(ret, &zero);
+
+	validateFloat(__LINE__,ret,_b[3],_b[1],_a[0],_a[2]);
 
 	return ret;
 }
@@ -384,7 +405,7 @@ __m128 test_mm_sub_ps(const float *_a,const float *_b)
 	__m128 b = test_mm_load_ps(_b);
 
 	__m128 c = _mm_sub_ps(a,b);
-	validateFloat(c,dw,dz,dy,dx);
+	validateFloat(__LINE__,c,dw,dz,dy,dx);
 	return c;
 }
 
@@ -412,7 +433,7 @@ __m128 test_mm_add_ps(const float *_a,const float *_b)
 	__m128 b = test_mm_load_ps(_b);
 
 	__m128 c = _mm_add_ps(a,b);
-	validateFloat(c,dw,dz,dy,dx);
+	validateFloat(__LINE__,c,dw,dz,dy,dx);
 	return c;
 }
 
@@ -460,7 +481,7 @@ __m128 test_mm_mul_ps(const float *_a,const float *_b)
 	__m128 b = test_mm_load_ps(_b);
 
 	__m128 c = _mm_mul_ps(a,b);
-	validateFloat(c,dw,dz,dy,dx);
+	validateFloat(__LINE__,c,dw,dz,dy,dx);
 	return c;
 }
 
@@ -489,7 +510,7 @@ __m128 test_mm_max_ps(const float *_a,const float *_b)
 	__m128 b = test_mm_load_ps(_b);
 
 	__m128 ret = _mm_max_ps(a,b);
-	validateFloat(ret,c[3],c[2],c[1],c[0]);
+	validateFloat(__LINE__,ret,c[3],c[2],c[1],c[0]);
 	return ret;
 }
 
@@ -506,7 +527,7 @@ __m128 test_mm_min_ps(const float *_a,const float *_b)
 	__m128 b = test_mm_load_ps(_b);
 
 	__m128 ret = _mm_min_ps(a,b);
-	validateFloat(ret,c[3],c[2],c[1],c[0]);
+	validateFloat(__LINE__,ret,c[3],c[2],c[1],c[0]);
 	return ret;
 }
 
@@ -699,7 +720,7 @@ __m128 test_mm_cvtepi32_ps(const int32_t *_a)
 	}
 
 	__m128 ret = _mm_cvtepi32_ps(a);
-	validateFloat(ret,trun[3],trun[2],trun[1],trun[0]);
+	validateFloat(__LINE__,ret,trun[3],trun[2],trun[1],trun[0]);
 
 	return ret;
 
@@ -711,7 +732,7 @@ __m128i test_mm_cvtps_epi32(const float *_a)
 	int32_t trun[4];
 	for (uint32_t i=0; i<4; i++)
 	{
-		trun[i] = (int32_t)(roundf(_a[i]));
+		trun[i] = (int32_t)(::roundf(_a[i]));
 	}
 
 	__m128i ret = _mm_cvtps_epi32(a);

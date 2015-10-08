@@ -27,7 +27,7 @@
 // Ken Fast : kfast@gdeb.com
 
 #define GCC 1
-#define ENABLE_CPP_VERSION 0
+#define ENABLE_CPP_VERSION 1
 
 #if GCC
 #define FORCE_INLINE					inline __attribute__((always_inline))
@@ -94,6 +94,14 @@ FORCE_INLINE __m128 _mm_setr_ps(float w, float z , float y , float x )
 	float __attribute__ ((aligned (16))) data[4] = { w, z, y, x };
 	return vld1q_f32(data);
 }
+
+// TODO - wrong function - copied above to resolve external
+FORCE_INLINE __m128i _mm_setr_epi32(int w, int z , int y , int x )
+{
+	int32_t __attribute__ ((aligned (16))) data[4] = { w, z, y, x };
+	return vld1q_s32(data);
+}
+
 
 // Sets the 4 signed 32-bit integer values to i. https://msdn.microsoft.com/en-us/library/vstudio/h4xscxat(v=vs.100).aspx
 FORCE_INLINE __m128i _mm_set1_epi32(int _i)
@@ -328,16 +336,29 @@ FORCE_INLINE __m128 _mm_shuffle_ps_default(__m128 a, __m128 b)
 {
 #if ENABLE_CPP_VERSION // I am not convinced that the NEON version is faster than the C version yet.
 	__m128 ret;
+
+	printf ("\tdefault shuffle ...\n");
+	printf ("\ta[0] = %f a[1] = %f a[2] = %f a[3] = %f\n", a[0], a[1], a[2], a[3]);
+	printf ("\tb[0] = %f b[1] = %f b[2] = %f b[3] = %f\n", b[0], b[1], b[2], b[3]);
+
 	ret[0] = a[i & 0x3];
 	ret[1] = a[(i >> 2) & 0x3];
 	ret[2] = b[(i >> 4) & 0x03];
 	ret[3] = b[(i >> 6) & 0x03];
+
+	printf ("\tret[0] = %f ret[1] = %f ret[2] = %f ret[3] = %f\n", ret[0], ret[1], ret[2], ret[3]);
 	return ret;
 #else
+	printf ("\tdefault shuffle ...\n");
+	printf ("\ta[0] = %f a[1] = %f a[2] = %f a[3] = %f\n", a[0], a[1], a[2], a[3]);
+	printf ("\tb[0] = %f b[1] = %f b[2] = %f b[3] = %f\n", b[0], b[1], b[2], b[3]);
+
 	__m128 ret = vmovq_n_f32(vgetq_lane_f32(a, i & 0x3));
 	ret = vsetq_lane_f32(vgetq_lane_f32(a, (i >> 2) & 0x3), ret, 1);
 	ret = vsetq_lane_f32(vgetq_lane_f32(b, (i >> 4) & 0x3), ret, 2);
 	ret = vsetq_lane_f32(vgetq_lane_f32(b, (i >> 6) & 0x3), ret, 3);
+
+	printf ("\tret[0] = %f ret[1] = %f ret[2] = %f ret[3] = %f\n", ret[0], ret[1], ret[2], ret[3]);
 	return ret;
 #endif
 }
@@ -358,7 +379,10 @@ FORCE_INLINE __m128 _mm_shuffle_ps_function(__m128 a, __m128 b)
 		case _MM_SHUFFLE(2, 0, 1, 0): return _mm_shuffle_ps_2010(a, b); break;
 		case _MM_SHUFFLE(2, 0, 0, 1): return _mm_shuffle_ps_2001(a, b); break;
 		case _MM_SHUFFLE(2, 0, 3, 2): return _mm_shuffle_ps_2032(a, b); break;
-		default: _mm_shuffle_ps_default<i>(a, b);
+		default: {
+				 printf ("CALLING DEFAULT SHUFFLE: %d\n", i);
+				 _mm_shuffle_ps_default<i>(a, b);
+			 }
 	}
 }
 
