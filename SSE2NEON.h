@@ -337,7 +337,7 @@ FORCE_INLINE __m128 _mm_shuffle_ps_default(__m128 a, __m128 b)
 #if ENABLE_CPP_VERSION // I am not convinced that the NEON version is faster than the C version yet.
 	__m128 ret;
 
-	printf ("\tdefault shuffle ...\n");
+	printf ("\tCPP_VERSION: default shuffle ...\n");
 	printf ("\ta[0] = %f a[1] = %f a[2] = %f a[3] = %f\n", a[0], a[1], a[2], a[3]);
 	printf ("\tb[0] = %f b[1] = %f b[2] = %f b[3] = %f\n", b[0], b[1], b[2], b[3]);
 
@@ -349,7 +349,7 @@ FORCE_INLINE __m128 _mm_shuffle_ps_default(__m128 a, __m128 b)
 	printf ("\tret[0] = %f ret[1] = %f ret[2] = %f ret[3] = %f\n", ret[0], ret[1], ret[2], ret[3]);
 	return ret;
 #else
-	printf ("\tdefault shuffle ...\n");
+	printf ("\tNEON VERSION: default shuffle ...\n");
 	printf ("\ta[0] = %f a[1] = %f a[2] = %f a[3] = %f\n", a[0], a[1], a[2], a[3]);
 	printf ("\tb[0] = %f b[1] = %f b[2] = %f b[3] = %f\n", b[0], b[1], b[2], b[3]);
 
